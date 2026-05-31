@@ -1,0 +1,210 @@
+Based on your current project, here is everything you should implement, grouped by priority.
+
+---
+
+
+Phase 1 — Existing Feature Integration
+Reviews System
+Add review submission UI
+Show product reviews
+Update farmer ratings automatically
+Farmer Reply System
+Add farmer reply fields in reviews table
+Create farmer reply API
+Show replies below reviews
+Dispute Management
+Add dispute filing UI
+Complete admin dispute handling
+Show dispute status in orders
+Razorpay Integration
+Enable Razorpay
+Add payment verification API
+Update payment status after successful payment
+Notification System
+Insert notifications during order events
+Show unread notification count
+Mark notifications as read
+Phase 2 — Marketplace Core Features
+Wishlist
+Create wishlist table
+Add save/remove wishlist APIs
+Add wishlist UI and page
+Farmer Wallet & Payouts
+Create payouts table
+Add withdrawal request flow
+Add admin payout approval system
+Real-Time Order Tracking
+Setup WebSocket server
+Connect frontend live order updates
+Broadcast order status changes
+Low Stock Alerts
+Create PostgreSQL trigger
+Generate automatic stock notifications
+Bulk Order Enquiries
+Create enquiries table
+Add enquiry APIs
+Add farmer enquiry management UI
+Phase 3 — Security & Backend Improvements
+Rate Limiting
+Install express-rate-limit
+Protect login/register APIs
+Request Validation
+Install Zod
+Validate all POST/PATCH requests
+Logging System
+Install Pino logging
+Replace console logs
+Password Change Feature
+Add change password API
+Add profile password UI
+Account Lockout
+Implement failed login tracking
+Add temporary account locking
+Phase 4 — Farmer Dashboard Enhancements
+Earnings Analytics
+Add advanced charts
+Add range filters
+Add sales summaries
+Listing Management
+Add inline quantity editing
+Add duplicate listing option
+Add sorting/filtering
+Public Farmer Profile
+Create farmer profile page
+Show ratings, listings, trust score
+Phase 5 — Buyer Experience Improvements
+Reorder System
+Add reorder button
+Re-add previous items to cart
+Search Improvements
+Add recent searches
+Add autocomplete suggestions
+Save For Later
+Add saved items section
+Move items between cart and saved
+Estimated Delivery
+Calculate estimated delivery dates
+Store delivery estimate in orders
+Phase 6 — Admin Panel Completion
+Dashboard Statistics
+Add admin summary cards
+Create admin stats API
+Bulk User Actions
+Add bulk verify/ban
+Add user search/filter
+Product Moderation
+Add flagged products system
+Hide flagged products from buyers
+Add moderation controls
+
+
+## What's Already Done (Don't Touch)
+
+Live auctions with bidding UI, trust score engine, price history charts, full-text search with ts_vector, multi-language (English/Hindi/Telugu), region filtering, glassmorphic UI, role-based dashboards, 5-stage order pipeline, cart system, dispute admin panel, and the complete 9-table schema. These are all solid.
+
+---
+
+## Group 1 — Wire Up What's Already Built (Highest Value, Least Work)
+
+These features have schema, lib files, and partial backend already — they just need to be connected to a working UI.
+
+**1. Reviews submission UI**
+Your `reviews.ts` lib has `createReview()` and `listProductReviews()` already written. The schema exists. But there is no UI anywhere. In `orders.$id.tsx`, after an order reaches `delivered` status, show a star rating form (1–5 stars), a comment text area, and a submit button for each `order_item`. Call `createReview()` on submit. After submission, display the submitted review in a read-only card. In `listings.$id.tsx` under the Reviews tab, call `listProductReviews()` to show all reviews with star rating, comment, and reviewer name. After each new review is saved, recalculate the farmer's average rating and update `farmer_profiles.rating` in the same API call.
+
+**2. Farmer reply to reviews**
+Add a `farmer_reply` and `farmer_reply_at` column to the reviews table via a migration. In `orders.$id.tsx` or a dedicated farmer reviews page, show all reviews on the farmer's products with a text input for reply. Add `PATCH /api/reviews/:id/reply` in the backend that sets these two columns. Show the farmer reply below the buyer review on the product detail page.
+
+**3. Dispute filing by buyer**
+Your `disputes.ts` has `createDispute()` written. In `orders.$id.tsx`, for delivered orders, add a "File a Dispute" button. Clicking it opens an inline form with a reason dropdown (quality_mismatch, not_delivered, quantity_short, wrong_product), a description text area, and optional image URL fields for evidence. On submit, call `createDispute()`. Show the current dispute status on the order page if one exists. The admin panel already partially handles resolution — complete it so admin can click Approve Refund or Reject on `admin.disputes.tsx`.
+
+**4. Enable Razorpay payments**
+Your Razorpay integration is fully coded but disabled by `VITE_RAZORPAY_ENABLED=false` in the frontend env. Change it to `true` in your local `.env`. In `payments.js` backend route, add a `POST /api/payments/verify` endpoint that verifies the Razorpay payment signature using `crypto.createHmac('sha256', RAZORPAY_KEY_SECRET)` and updates `payment_status` in the orders table to `'paid'` on successful verification. Wire this into the checkout flow so after the Razorpay popup closes successfully, the verification call is made automatically.
+
+**5. Notifications delivery**
+Your `notifications.ts` lib has `listNotifications()` and `markNotificationRead()`. The bell icon and the `/notifications` route exist. But nothing ever inserts a notification row. In your backend `orders.js` route, after every status change (`accepted`, `dispatched`, `delivered`), insert a row into the notifications table for the buyer's `user_id` with an appropriate message. When a new order is placed, insert a notification for the farmer. On the frontend, when the bell icon is clicked, call `listNotifications()` and show the unread count badge. Call `markNotificationRead()` when the user visits `/notifications`.
+
+---
+
+## Group 2 — New Features That Complete the Marketplace
+
+**6. Buyer wishlist**
+Add a `wishlists` table: `id UUID PK`, `buyer_id UUID FK → users`, `product_id UUID FK → products`, `created_at TIMESTAMPTZ`, unique on `(buyer_id, product_id)`. Add a heart icon button to `ProductCard.tsx`. Add `POST /api/wishlist/:productId` and `DELETE /api/wishlist/:productId` backend routes. Create a `/wishlist` frontend route that shows all saved products in a grid using `ProductCard`. Fetch the user's wishlist IDs on page load so the heart shows filled or empty correctly.
+
+**7. Farmer payout wallet**
+Your schema tracks `farmer_payout` on every order. Add a `payouts` table: `id UUID PK`, `farmer_id UUID FK → users`, `amount NUMERIC`, `status TEXT` (pending/approved/paid/rejected), `upi_id TEXT`, `admin_note TEXT`, `requested_at TIMESTAMPTZ`, `resolved_at TIMESTAMPTZ`. In `dashboard.farmer.tsx` add a Wallet section that shows the total pending balance (sum of `farmer_payout` from paid and delivered orders, minus already-paid payouts). Add a "Request Withdrawal" button that creates a payout row. In `admin.dashboard.tsx` add a Payouts tab where the admin sees pending requests and can approve them by entering a UTR number.
+
+**8. Real-time order status updates**
+Your `ws` package is installed and `useOrderStatus.ts` hook exists but is not fully wired. In `orders.$id.tsx`, after the page loads, open a WebSocket connection to your Express backend. In `server.js`, set up the WebSocket server alongside Express. When a farmer updates order status via `PATCH /api/orders/:id/status`, broadcast a message on that order's channel to any connected client subscribed to that order ID. In the frontend hook, receive this message and update the displayed status without requiring a page refresh. This makes the tracking timeline update live like Zomato's order tracking.
+
+**9. Stock low alert for farmers**
+Add a PostgreSQL trigger function that fires after every UPDATE on the `products` table. If `available_quantity_kg` drops below 20% of `quantity_kg`, insert a notification row for the `farmer_id` with the message "Your [crop_name] stock is running low — only X kg remaining." The farmer sees this in their notifications bell. Add the migration SQL to a new file `backend/db/phase5_migration.sql`.
+
+**10. Bulk / wholesale enquiry**
+Your `products` table has `maximum_order_kg`. If a buyer enters a quantity above that limit, currently they get an error. Instead, show a "Request Bulk Order" button. Add an `enquiries` table: `id UUID PK`, `product_id UUID FK`, `buyer_id UUID FK`, `quantity_kg NUMERIC`, `offered_price NUMERIC`, `message TEXT`, `status TEXT` (pending/accepted/rejected), `accepted_price NUMERIC`. Add `POST /api/enquiries` and `GET /api/enquiries` routes. In the farmer's dashboard, show pending enquiries where they can accept with their own final price or reject.
+
+---
+
+## Group 3 — Security and Quality Improvements
+
+**11. Rate limiting on auth routes**
+Install `express-rate-limit`. In `server.js`, add a limiter of 5 requests per 15 minutes applied specifically to `POST /api/auth/login` and `POST /api/auth/register`. This prevents brute-force password attacks locally while you develop.
+
+**12. Input validation with Zod**
+Install `zod`. For every `POST` and `PATCH` route in your backend, define a Zod schema and validate `req.body` before touching the database. For example, the create product route should validate that `price_per_kg` is a positive number, `crop_name` is a non-empty string under 100 characters, and `quantity_kg` is positive. Return a clear 400 error with field-level messages if validation fails. This prevents garbage data from entering your database.
+
+**13. Request logging**
+Install `pino` and `pino-http`. Replace all `console.log` statements in your backend with structured pino log calls. Add `app.use(pinoHttp())` to `server.js`. Your logs will then show method, URL, status code, and response time for every request in a readable format in the terminal.
+
+**14. Password change from profile settings**
+In `profile.edit.tsx`, add a separate "Change Password" section with three fields: current password, new password, new password confirm. Add a backend endpoint `PATCH /api/auth/change-password` that verifies the current password with bcrypt, then saves the new bcrypt hash. This is a basic account security feature every platform must have.
+
+**15. Account lockout already in schema, not in logic**
+Your `users` table has `login_attempts` and `locked_until` columns. In `auth.js` backend, after a failed login, increment `login_attempts`. If it reaches 5, set `locked_until` to `NOW() + INTERVAL '15 minutes'`. At the start of every login attempt, check if `locked_until` is in the future and return a "Too many attempts, try again in X minutes" error if so. Reset `login_attempts` to 0 on successful login.
+
+---
+
+## Group 4 — Farmer Dashboard Improvements
+
+**16. Advanced earnings analytics**
+In `dashboard.farmer.tsx`, your earnings chart is a single 14-day area chart. Expand it with three additions. First, add a range toggle (7 days, 30 days, 90 days) that refetches data with a `?range=` query parameter. Second, add a bar chart (using Recharts which you already have) showing revenue broken down by crop category. Third, add a small summary row showing best-selling crop, average order value, and total orders this month. Add a `GET /api/analytics/farmer` backend route that returns this aggregated data.
+
+**17. Listing management improvements**
+In `dashboard.farmer.tsx` on the listings table, add inline quantity editing so farmers can update `available_quantity_kg` without going to the full edit form. Add a "Duplicate listing" button that pre-fills the create form with all the same data so a farmer can quickly relist the same crop at a new price. Add a sort option so farmers can sort their listings by date, quantity remaining, or price.
+
+**18. Farmer profile public page**
+Create a new route `/farmer/:id` that shows a public profile page for any farmer. Display their farm name, district, primary crops, rating, total reviews count, trust score, and a grid of their active listings. Link to this page from `ProductCard.tsx` on the farmer's name/location line. This lets buyers evaluate a farmer before ordering, like a seller profile on Amazon.
+
+---
+
+## Group 5 — Buyer Experience Improvements
+
+**19. Order reorder button**
+In `orders.$id.tsx`, for delivered orders, add a "Reorder" button that reads the `order_items` from that order and adds them all back to the cart with one click. Check current stock availability before adding and skip any items that are no longer available, showing a message for those.
+
+**20. Search history and autocomplete**
+In `listings.tsx`, save the last 5 search terms the user has typed to `localStorage` under the key `agrimart-recent-searches`. When the search input is focused and empty, show these recent searches as a dropdown. When typing, show up to 5 autocomplete suggestions by calling a lightweight `GET /api/products/suggest?q=term` backend endpoint that uses the `pg_trgm` similarity function you already have enabled.
+
+**21. Cart save for later**
+In `cart.tsx`, for each cart item, add a "Save for Later" button that removes the item from the active cart and moves it to a separate `saved_items` array in localStorage. Show a "Saved for Later" section below the cart. Add a "Move to Cart" button on each saved item to bring it back. This is a standard feature on all major e-commerce platforms.
+
+**22. Estimated delivery date on checkout**
+In `checkout.tsx`, after the buyer selects their address, calculate and display an estimated delivery date range for each group of items. Base it on a simple rule: if the buyer's district matches the farmer's district, show 1–2 days; if same state but different district, show 2–4 days; if different state, show 4–7 days. Store the `estimated_delivery_date` alongside the order when it is created.
+
+---
+
+## Group 6 — Admin Panel Completions
+
+**23. Dashboard summary cards**
+In `admin.dashboard.tsx`, add four summary stat cards at the top: total users (split by farmer/buyer count), total active listings, total orders this month with revenue, and total open disputes. Fetch this from a new `GET /api/admin/stats` endpoint that runs four simple COUNT queries.
+
+**24. Bulk user actions**
+In `admin.users.tsx`, add checkboxes to each user row and a "Bulk Ban" and "Bulk Verify" action button that applies the action to all selected users in a single API call. Add a search box at the top to filter users by name or email without a page reload.
+
+**25. Product moderation queue**
+In `admin.products.tsx`, add a filter to show only listings that have been flagged. Add a "Flag" button to the admin products table. Flagged listings should be hidden from buyers until the admin reviews and either approves or removes them. Add a `flagged BOOLEAN DEFAULT false` column to the products table via migration.
+
+---
+
+## Suggested Order to Implement Locally
+
+Start with Group 1 (wire up existing features) first since those give you the most working functionality for the least code written. Then do Group 3 (security) since those are quick wins that protect your local dev data. Then Group 2 (new features) one at a time starting with wishlist and payouts since those have clear value. Groups 4, 5, and 6 can be done in any order after that.

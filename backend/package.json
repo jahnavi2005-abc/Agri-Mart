@@ -1,0 +1,42 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "description": "",
+  "main": "server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node --no-warnings --env-file=.env server.js",
+    "setup": "node --no-warnings --env-file=.env db/setup.js",
+    "migrate:supabase": "node --no-warnings --env-file=.env db/run_supabase_migration.js",
+    "migrate:phase3": "node --no-warnings --env-file=.env db/run_phase3_migration.js",
+    "migrate:fts": "node --no-warnings --env-file=.env db/run_fts_migration.js",
+    "migrate:phase4": "node --no-warnings --env-file=.env db/run_phase4_migration.js",
+    "migrate:phase5": "node --no-warnings --env-file=.env db/run_phase5_migration.js",
+    "seed": "node --no-warnings --env-file=.env db/seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1042.0",
+    "@aws-sdk/s3-request-presigner": "^3.1042.0",
+    "@supabase/supabase-js": "^2.105.4",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.2",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "multer": "^2.1.1",
+    "nodemailer": "^8.0.7",
+    "pg": "^8.20.0",
+    "pino": "^10.3.1",
+    "pino-http": "^11.0.0",
+    "razorpay": "^2.9.6",
+    "sharp": "^0.34.5",
+    "ws": "^8.20.1",
+    "zod": "^4.4.3"
+  }
+}

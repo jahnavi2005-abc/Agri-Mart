@@ -1,0 +1,91 @@
+export type ProductStatus = "draft" | "active" | "paused" | "sold_out" | "removed";
+export type ListingType = "immediate" | "preorder" | "auction";
+
+export type Product = {
+  id: string;
+  farmer_id: string;
+  farmer_name?: string | null;
+  farmer_phone?: string | null;
+  farmer_display_name: string;
+  crop_name: string;
+  category: string;
+  description: string | null;
+  quantity_kg: number;
+  available_quantity_kg: number;
+  minimum_order_kg: number;
+  maximum_order_kg: number | null;
+  price_per_kg: number;
+  grade: string | null;
+  is_organic: boolean;
+  harvest_date: string | null;
+  available_from: string | null;
+  listing_type: ListingType;
+  district: string;
+  state: string;
+  location_lat: number | null;
+  location_lng: number | null;
+  delivery_options: {
+    pickup?: boolean;
+    delivery?: boolean;
+  };
+  packaging_info: string | null;
+  image_urls: string[];
+  video_url: string | null;
+  status: ProductStatus;
+  price_negotiable: boolean;
+  avg_rating: number;
+  review_count: number;
+  view_count: number;
+  flagged_count: number;
+  created_at: string;
+  updated_at: string;
+  seller_trust_level?: number | null;
+  auction_end_at?: string | null;
+  auction_min_bid?: number | null;
+};
+
+export type ProductFilters = {
+  category?: string;
+  organic?: boolean;
+  minPrice?: number;
+  maxPrice?: number;
+  search?: string;
+  farmerId?: string;
+  includeOwnInactive?: boolean;
+  state?: string;
+  district?: string;
+  listingType?: string;
+  grade?: string;
+  lat?: number;
+  lng?: number;
+  radius?: number;
+  minTrust?: number;
+  minRating?: number;
+  harvestFreshness?: number;
+  deliveryType?: string;
+};
+
+export type CreateProductInput = {
+  crop_name: string;
+  category: string;
+  description?: string;
+  quantity_kg: number;
+  price_per_kg: number;
+  minimum_order_kg: number;
+  maximum_order_kg?: number | null;
+  grade?: string;
+  is_organic: boolean;
+  harvest_date?: string;
+  district: string;
+  state: string;
+  delivery_options: {
+    pickup: boolean;
+    delivery: boolean;
+  };
+  packaging_info?: string;
+  image_urls: string[];
+  price_negotiable: boolean;
+  listing_type?: string;
+  auction_end_at?: string;
+  auction_min_bid?: number;
+};
